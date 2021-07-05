@@ -6,3 +6,11 @@ from skimage import color
 
 def convert_rgb_to_hsv(img):
     return color.convert_colorspace(img, 'RGB', 'HSV')
+
+def threshold_otsu_skimage(img):
+    
+    th = filters.threshold_otsu(img, nbins=256)
+    
+    img_th = img >= th
+    
+    return img_th
