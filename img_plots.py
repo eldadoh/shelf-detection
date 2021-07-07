@@ -174,3 +174,13 @@ def show_histogram(img,bins_num,display = True):
     plt.scatter(x_bins[hist_vals==0],hist_vals[hist_vals==0],color = 'blue')
     
     plt.show()
+
+
+    """
+    
+lines[0]
+((318, 708), (719, 680))
+lines[1]
+((212, 1032), (719, 979))
+
+    """
