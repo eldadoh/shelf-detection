@@ -178,7 +178,74 @@ def shelf_detection_hough_transform(img_path):
     # calc angle between 2 points and elimate outliers 
     # clustering ? k-means ? 
 
+def normalize_image(img_path) : 
+
+    """
+    Neural networks process inputs using small weight values, and inputs with large integer values can disrupt or slow down the learning process. 
+    As such it is good practice to normalize the pixel values so that each pixel value has a value between 0 and 1.
+    """
+
+    try :
+        img = io.imread(img_path)
+    except:  
+        img = img_path 
+
+    img = img.astype('float32')
+    
+    # normalize to the range 0-1
+    img /= 255.0
+
+    return img 
+
+def centerize_image(img_path) : 
+
+    """[summary]
+    Centering, as the distribution of the pixel values is centered on the value of zero.
+
+    Centering can be performed before or after normalization. 
+    
+    Centering the pixels then normalizing will mean that the pixel values will be centered close to 0.5 and be in the range 0-1. 
+    
+    Centering after normalization will mean that the pixels will have positive and negative values, in which case images will not display correctly 
+    (e.g. pixels are expected to have value in the range 0-255 or 0-1). 
+    Centering after normalization might be preferred, although it might be worth testing both approaches
+
+    """
+
+
+    try :
+        img = io.imread(img_path)
+    except:  
+        img = img_path 
+
+    img = img.astype('float32')
+
+    mean = img.mean()
+
+    img -= mean 
+
+    return img
+
+def standartize_image(img_path) : 
+
+    try :
+        img = io.imread(img_path)
+    except:  
+        img = img_path 
+
+    img = img.astype('float32')
+
+    mean,std  = img.mean() , img.std()
+
+    img -= mean 
+
+    img /= std 
+
+    return img 
+    
+
 def main(): 
+
 
     IMAGES_FOLDER_PATH = 'Data'
     IMAGE_1 = 'Data/2021-06-06-162728_1.jpg'
@@ -186,7 +253,7 @@ def main():
     # show_histogram(img = img_sobel_x,bins_num = 256,display = True)
     # run_func_on_single_item(func = shelf_detection_hough_transform,img_path=IMAGE_1)
 
-    run_func_on_dir(func = shelf_detection_hough_transform,dir_path = IMAGES_FOLDER_PATH,suffix = 'jpg')
+    # run_func_on_dir(func = shelf_detection_hough_transform,dir_path = IMAGES_FOLDER_PATH,suffix = 'jpg')
     
 if __name__ == "__main__" : 
 
