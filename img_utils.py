@@ -7,11 +7,87 @@ import torch
 import os
 import shutil 
 from skimage.transform import resize as skimage_resize 
-
+from skimage import io 
 
 """
 Utility script for general image processing tasks
 """
+
+def normalize_image(img_path) : 
+
+    """
+    [0-255] --> [0 - 1]
+    Neural networks process inputs using small weight values, and inputs with large integer values can disrupt or slow down the learning process. 
+    As such it is good practice to normalize the pixel values so that each pixel value has a value between 0 and 1.
+    """
+
+    try :
+        img = io.imread(img_path)
+    except:  
+        img = img_path 
+
+    img = img.astype('float32')
+    
+    # normalize to the range 0-1
+    img /= 255.0
+
+    return img 
+
+def centerize_image(img_path , normalize_before = False) : 
+
+    """
+    centerizing and standartizing are used for training neural networks efficently 
+    after you done center/standartize image you can not display it because of negative values
+    so reverse your operations to display again in range [0-1] / [0 - 255 ]
+
+    Centering, as the distribution of the pixel values is centered on the value of zero.
+    Centering can be performed before or after normalization. 
+    
+    Centering the pixels before normalizing will mean that the pixel values will be centered close to 0.5 and be in the range 0-1. 
+    
+    Centering after normalization will mean that the pixels will have positive and negative values [-0.5  , 0.5 ], 
+    in which case images will not display correctly (e.g. pixels are expected to have value in the range 0-255 or 0-1). 
+    """
+
+    normalize_after = not normalize_before
+
+    try :
+        img = io.imread(img_path)
+    except:  
+        img = img_path 
+
+    img = img.astype('float32')
+
+    if normalize_before:
+
+        img /= 255.0
+
+    mean = img.mean()
+
+    img -= mean 
+
+    if normalize_after:
+
+        img /= 255.0
+
+    return img
+
+def standardize_image(img_path) : 
+
+    try :
+        img = io.imread(img_path)
+    except:  
+        img = img_path 
+
+    img = img.astype('float32')
+
+    mean,std  = img.mean() , img.std()
+
+    img -= mean 
+
+    img /= std 
+
+    return img 
 
 def resize_img1_according_to_img2(img1_path,img2_path,output_dir_path = None, save = False):
     """
