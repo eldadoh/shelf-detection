@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import os
 import shutil 
+import math 
 from skimage.transform import resize as skimage_resize 
 from skimage import io 
 
@@ -88,6 +89,43 @@ def standardize_image(img_path) :
     img /= std 
 
     return img 
+
+def show_histogram(img,bins_num,display = True): 
+
+    hist_vals , x_bins =  np.histogram(img,bins_num)
+    hist_vals = np.concatenate([np.array([0]),hist_vals])
+
+    if display : 
+        
+        # calc_image_range(img)
+        print('\nThe non-zero values on the histogram are :\n')
+        print(x_bins[hist_vals!=0])
+        
+    fig = plt.figure()
+    
+    plt.scatter(x_bins[hist_vals!=0],hist_vals[hist_vals!=0],color = 'red')
+    plt.scatter(x_bins[hist_vals==0],hist_vals[hist_vals==0],color = 'blue')
+    
+    plt.show()
+
+
+def angle_between_two_points(point1,point2,show = True):
+
+    x1,y1 = point1[:]
+    x2,y2 = point2[:]
+
+    dy = np.abs(y2 - y1)
+    dx = np.abs(x2 - x1)
+
+    angle_radian = math.atan2(dy, dx)  
+    angle_degree = np.rad2deg(angle_radian)
+
+    if show: 
+        if (angle_degree > 30) : 
+            print(f'{point1} , {point2}')
+            print(f'The angle between the two line\'s points is probably outlier : {angle_degree}')
+    
+    return angle_degree 
 
 def resize_img1_according_to_img2(img1_path,img2_path,output_dir_path = None, save = False):
     """

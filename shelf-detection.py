@@ -10,10 +10,12 @@ from skimage.transform import hough_line, hough_line_peaks
 from skimage.draw import line
 from skimage import data, exposure, img_as_float
 from skimage.transform import probabilistic_hough_line
+from sklearn.cluster import KMeans , SpectralClustering
 from skimage.feature import canny 
 from copy import deepcopy
-
-from img_utils import standardize_image
+from ml_utils import standardize_image,K_means_sklearn
+from img_utils import show_histogram
+from img_utils_skimage import threshold_otsu_skimage
 
 def run_func_on_single_item(func, img_path): 
     func(img_path)
@@ -22,33 +24,8 @@ def run_func_on_dir(func,dir_path,suffix = 'jpg'):
     for item_path in glob.glob(dir_path + '/*.' + 'jpg'):
         func(item_path)
 
-def show_histogram(img,bins_num,display = True): 
 
-    hist_vals , x_bins =  np.histogram(img,bins_num)
-    hist_vals = np.concatenate([np.array([0]),hist_vals])
-
-    if display : 
-        
-        # calc_image_range(img)
-        print('\nThe non-zero values on the histogram are :\n')
-        print(x_bins[hist_vals!=0])
-        
-    fig = plt.figure()
-    
-    plt.scatter(x_bins[hist_vals!=0],hist_vals[hist_vals!=0],color = 'red')
-    plt.scatter(x_bins[hist_vals==0],hist_vals[hist_vals==0],color = 'blue')
-    
-    plt.show()
-
-def threshold_otsu_skimage(img):
-    
-    th = filters.threshold_otsu(img, nbins=256)
-    
-    img_th = img >= th
-    
-    return img_th
-
-def probabilistic_hough_transform(img,derivative_img,show = True):
+def probabilistic_hough_transform(derivative_img,threshold, line_length,line_gap):
 
     """
     image : (M, N) ndarray
@@ -63,141 +40,200 @@ def probabilistic_hough_transform(img,derivative_img,show = True):
         Angles at which to compute the transform, in radians. If None, use a range from -pi/2 to pi/2.
     """
     
-    lines = probabilistic_hough_line(derivative_img, threshold=50, line_length=100,line_gap=3)     
+    lines = probabilistic_hough_line(derivative_img, threshold=threshold, line_length=line_length,line_gap=line_gap)     
 
+    return lines 
+     
+def plot_hough_1(lines,img,derivative_img):
 
-    if show : 
+    img_copy = deepcopy(img)
+    
+    #######
+    # fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharex=True, sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(15, 15), sharex=True, sharey=True)
+    ax = axes.ravel()
+    #######
+    #plot0#
+    ax[0].imshow(img_copy, cmap='gray')
+    ax[0].set_title('Input')
+    #plot1#
+    ax[1].imshow(derivative_img * 0)
+    for line in lines:
+        p0, p1 = line
+        ax[1].plot((p0[0], p1[0]), (p0[1], p1[1]))
+        # ax[1].scatter((p0[0], p1[0]), (p0[1], p1[1]))
+    ax[1].imshow(derivative_img, cmap='gray')
+    ax[1].set_xlim((0, derivative_img.shape[1]))
+    ax[1].set_ylim((derivative_img.shape[0], 0))
+    ax[1].set_title('Edges - Sobel_X')
+    #plot2#
+    ax[2].imshow(img_copy * 0)
+    for line in lines:
+        p0, p1 = line
+        # ax[2].scatter((p0[0], p1[0]), (p0[1], p1[1]))
+        ax[2].plot((p0[0], p1[0]), (p0[1], p1[1]))
+    ax[2].imshow(img_copy, cmap='gray')
+    ax[2].set_xlim((0, img_copy.shape[1]))
+    ax[2].set_ylim((img_copy.shape[0], 0))
+    ax[2].set_title('Probabilistic Hough')
+    #######
+    for a in ax:
+        a.set_axis_off()
 
-        img_copy = img 
-        
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharex=True, sharey=True)
-        ax = axes.ravel()
-        
-        ax[0].imshow(img_copy, cmap='gray')
-        ax[0].set_title('Input')
-
-        ax[1].imshow(derivative_img * 0)
-        for line in lines:
-            p0, p1 = line
-            ax[1].plot((p0[0], p1[0]), (p0[1], p1[1]))
-            ax[1].scatter((p0[0], p1[0]), (p0[1], p1[1]))
-        ax[1].imshow(derivative_img, cmap='gray')
-        ax[1].set_xlim((0, derivative_img.shape[1]))
-        ax[1].set_ylim((derivative_img.shape[0], 0))
-        ax[1].set_title('Edges - Sobel_X')
-
-        ax[2].imshow(img_copy * 0)
-        for line in lines:
-            p0, p1 = line
-            ax[2].scatter((p0[0], p1[0]), (p0[1], p1[1]))
-            ax[2].plot((p0[0], p1[0]), (p0[1], p1[1]))
-        ax[2].imshow(img_copy, cmap='gray')
-        ax[2].set_xlim((0, img_copy.shape[1]))
-        ax[2].set_ylim((img_copy.shape[0], 0))
-        ax[2].set_title('Probabilistic Hough')
-
-        for a in ax:
-            a.set_axis_off()
-
-        plt.tight_layout()
-        plt.show()
+    plt.tight_layout()
+    plt.show()
+    #######
 
     return lines
 
-def plot_hough_points(lines,img, show = True):
-    
+def plot_hough_2(lines,img):
+ 
+    num_of_points = len(lines)
+
+    #######       
+    # fig, axes = plt.subplots(1, 2, figsize=(15, 5), sharex=True, sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(15, 15), sharex=True, sharey=True)
+    ax = axes.ravel()
+    #######
+    #plot0#
+    ax[0].imshow(img * 0)
     for line in lines:
         p0, p1 = line
-        calc_angle(p0,p1)
+        ax[0].plot((p0[0], p1[0]), (p0[1], p1[1]))
+        ax[0].scatter((p0[0], p1[0]), (p0[1], p1[1]))
+    ax[0].imshow(img, cmap='gray')
+    ax[0].set_xlim((0, img.shape[1]))
+    ax[0].set_ylim((img.shape[0], 0))
+    ax[0].set_title(f'img + points')
+    #plot1#
+    ax[1].imshow(img * 0)
+    for line in lines:
+        p0, p1 = line
+        ax[1].plot((p0[0], p1[0]), (p0[1], p1[1]))
+        # ax[1].scatter((p0[0], p1[0]), (p0[1], p1[1]))
+    ax[1].set_title(f'Only Points \nNumber of points: {num_of_points}')
+    #######
+    plt.tight_layout()
+    plt.show()
 
-    if show : 
-            
-        fig, axes = plt.subplots(1, 2, figsize=(15, 5), sharex=True, sharey=True)
-        ax = axes.ravel()
 
-        ax[0].imshow(img * 0)
-        for line in lines:
-            p0, p1 = line
-            ax[0].plot((p0[0], p1[0]), (p0[1], p1[1]))
-            ax[0].scatter((p0[0], p1[0]), (p0[1], p1[1]))
+def post_process_line_segments(img_rgb,lines): 
+
+    epsilon = 1e-4 
+
+    new_lines = []
+
+    for line in lines : 
+
+        p1,p2 = line
+
+        p1_x,p1_y = p1 
+        p2_x,p2_y = p2 
+
+        m = ((p2_y - p1_y) + epsilon )  / (p2_x - p1_x)
+
+        # Y - p2_y = m (X - p2_x)
+        # Y - p2_y = m (0 - p2_x) # force X=0 and solve for Y 
+
+        X_left = 0
+        Y_left = m * (X_left - p2_x) + p2_y
         
-        ax[0].imshow(img, cmap='gray')
-        ax[0].set_xlim((0, img.shape[1]))
-        ax[0].set_ylim((img.shape[0], 0))
-        ax[0].set_title('img + points ')
+        X_right = img_rgb.shape[1]
+        Y_right = m * (X_right - p2_x) + p2_y
 
-        ax[1].imshow(img * 0)
-        for line in lines:
-            p0, p1 = line
-            ax[1].scatter((p0[0], p1[0]), (p0[1], p1[1]))
-        ax[1].set_title('Only Points ')
-        
-        plt.show()
+        Y_left = int(Y_left)
+        Y_right = int(Y_right) 
 
-
-def calc_angle(point1,point2,show = True):
-
-    x1,y1 = point1[:]
-    x2,y2 = point2[:]
-
-    dy = np.abs(y2 - y1)
-    dx = np.abs(x2 - x1)
-
-    angle_radian = math.atan2(dy, dx)  
-    angle_degree = np.rad2deg(angle_radian)
-
-    if show: 
-        if (angle_degree > 30) : 
-            print(f'{point1} , {point2}')
-            print(f'The angle between the two line\'s points is probably outlier : {angle_degree}')
+        new_lines.append(((X_left,Y_left),(X_right,Y_right)))
     
-    return angle_degree
+    return new_lines
 
-def get_mask_of_hough_line_points(img , lines):
-
-    h,w = img.shape[:2]
-    mask = np.zeros((h,w))
-    print()    
-
-def shelf_detection_hough_transform(img_path):
+def shelf_detection_hough_transform(img_path,param_dict):
     
     img_rgb = io.imread(img_path)
 
-    img = io.imread(img_path,as_gray=True)
+    img_gray = io.imread(img_path,as_gray=True)
 
-    img = standardize_image(img)
+    img_standardized = standardize_image(img_gray)
 
-    img = threshold_otsu_skimage(img)
+    img_blurred = filters.gaussian(img_standardized, sigma=1, output=None, mode='nearest', cval=0, multichannel=None, preserve_range=False, truncate=4.0)
 
-    img = filters.sobel_h(img)
+    img_th = threshold_otsu_skimage(img_blurred)
 
-    lines = probabilistic_hough_transform(img = img_rgb,derivative_img = img)
+    # img_sobel_x = canny(img_th)
+    img_sobel_x = filters.sobel_h(img_th)
 
-    get_mask_of_hough_line_points(img_rgb,lines)
+    lines = probabilistic_hough_transform(derivative_img = img_sobel_x, **param_dict )
 
-    plot_hough_points(lines,img_rgb)
+    new_lines = post_process_line_segments(img_rgb,lines)
 
-    # analyse lines array ... 
+    # plot_hough_1(lines,img_rgb,img_sobel_x)
 
-    # calc angle between 2 points and elimate outliers 
-    # clustering ? k-means ? 
+    plot_hough_2(new_lines,img_rgb)
 
+    # K_means_sklearn(lines,True)
 
     
 def main(): 
 
-
+    
     IMAGES_FOLDER_PATH = 'Data'
     IMAGE_1 = 'Data/2021-06-06-162728_1.jpg'
+    IMAGE_2 = 'Data/2021-06-07-090106_1.jpg'
+    IMAGE_3 = 'Data/2021-06-07-090106_2.jpg'
 
-    # show_histogram(img = img_sobel_x,bins_num = 256,display = True)
-    run_func_on_single_item(func = shelf_detection_hough_transform,img_path=IMAGE_1)
-
+    # run_func_on_single_item(func = shelf_detection_hough_transform,img_path=IMAGE_1)
     # run_func_on_dir(func = shelf_detection_hough_transform,dir_path = IMAGES_FOLDER_PATH,suffix = 'jpg')
+    # shelf_detection_hough_transform(IMAGE_1 , PARAM_DICT)
+
+
+    CURRENT_BEST_PARAM_DICT = {'threshold' : 80,
+                               'line_length' : 400,
+                               'line_gap' : 10
+    }
+
+
+    PARAM_DICT1 = {'threshold' : 80,
+                  'line_length' : 400,
+                  'line_gap' : 10
+                  }
+                  
+    PARAM_DICT2 = {'threshold' : 80,
+                  'line_length' : 350,
+                  'line_gap' : 15
+                  }
+
+    PARAM_DICT3 = {'threshold' : 80,
+                  'line_length' : 150,
+                  'line_gap' : 3
+                  }
+    PARAM_DICT4 = {'threshold' : 80,
+                  'line_length' : 200,
+                  'line_gap' : 3
+                  }     
+    PARAM_DICT5 = {'threshold' : 80,
+                  'line_length' : 350,
+                  'line_gap' : 3
+                  }                                                                       
+
+    dict_list = []
+    dict_list.append(PARAM_DICT1)
+    dict_list.append(PARAM_DICT2)
+    dict_list.append(PARAM_DICT3)
+    dict_list.append(PARAM_DICT4)
+    dict_list.append(PARAM_DICT5)
+
+    for param_dict in dict_list : 
+
+        shelf_detection_hough_transform(IMAGE_1 , param_dict)
+        shelf_detection_hough_transform(IMAGE_2 , param_dict)
+        shelf_detection_hough_transform(IMAGE_3 , param_dict)
+        
     
 if __name__ == "__main__" : 
 
     #python3 -m cProfile shelf-detection.py
 
     main() 
+
 
