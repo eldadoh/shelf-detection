@@ -1,3 +1,4 @@
+import os
 import math
 import numpy as np 
 import pandas as pd
@@ -16,14 +17,6 @@ from copy import deepcopy
 from ml_utils import standardize_image,K_means_sklearn
 from img_utils import show_histogram
 from img_utils_skimage import threshold_otsu_skimage
-
-def run_func_on_single_item(func, img_path): 
-    func(img_path)
-
-def run_func_on_dir(func,dir_path,suffix = 'jpg'):
-    for item_path in glob.glob(dir_path + '/*.' + 'jpg'):
-        func(item_path)
-
 
 def probabilistic_hough_transform(derivative_img,threshold, line_length,line_gap):
 
@@ -115,6 +108,9 @@ def plot_hough_2(lines,img):
     #######
     plt.tight_layout()
     plt.show()
+    
+    return fig 
+
 
 
 def post_process_line_segments(img_rgb,lines): 
@@ -160,7 +156,6 @@ def shelf_detection_hough_transform(img_path,param_dict):
 
     img_th = threshold_otsu_skimage(img_blurred)
 
-    # img_sobel_x = canny(img_th)
     img_sobel_x = filters.sobel_h(img_th)
 
     lines = probabilistic_hough_transform(derivative_img = img_sobel_x, **param_dict )
@@ -169,65 +164,66 @@ def shelf_detection_hough_transform(img_path,param_dict):
 
     # plot_hough_1(lines,img_rgb,img_sobel_x)
 
-    plot_hough_2(new_lines,img_rgb)
+    fig = plot_hough_2(new_lines,img_rgb)
 
-    # K_means_sklearn(lines,True)
+    # K_means_sklearn(new_lines,n_clusters = 3)
+
+    # get the x,y of the clusters and return them as the shelf coordinates 
+
+    return fig 
+
+    pass
 
     
 def main(): 
-
     
     IMAGES_FOLDER_PATH = 'Data'
     IMAGE_1 = 'Data/2021-06-06-162728_1.jpg'
     IMAGE_2 = 'Data/2021-06-07-090106_1.jpg'
     IMAGE_3 = 'Data/2021-06-07-090106_2.jpg'
 
-    # run_func_on_single_item(func = shelf_detection_hough_transform,img_path=IMAGE_1)
-    # run_func_on_dir(func = shelf_detection_hough_transform,dir_path = IMAGES_FOLDER_PATH,suffix = 'jpg')
-    # shelf_detection_hough_transform(IMAGE_1 , PARAM_DICT)
-
-
-    CURRENT_BEST_PARAM_DICT = {'threshold' : 80,
-                               'line_length' : 400,
+    CURRENT_BEST_PARAM_DICT = {'threshold' : 30,
+                               'line_length' : 300,
                                'line_gap' : 10
     }
 
+    # shelf_detection_hough_transform(IMAGE_1 , CURRENT_BEST_PARAM_DICT)
 
-    PARAM_DICT1 = {'threshold' : 80,
-                  'line_length' : 400,
-                  'line_gap' : 10
-                  }
+    for img_path in glob.glob(IMAGES_FOLDER_PATH + '/*.jpg'):
+        fig = shelf_detection_hough_transform(img_path , CURRENT_BEST_PARAM_DICT) 
+        fig.savefig('Data/' + os.path.basename(img_path))
+
+    # PARAM_DICT1 = {'threshold' : 80,
+    #               'line_length' : 400,
+    #               'line_gap' : 10
+    #               }
                   
-    PARAM_DICT2 = {'threshold' : 80,
-                  'line_length' : 350,
-                  'line_gap' : 15
-                  }
+    # PARAM_DICT2 = {'threshold' : 80,
+    #               'line_length' : 350,
+    #               'line_gap' : 15
+    #               }
 
-    PARAM_DICT3 = {'threshold' : 80,
-                  'line_length' : 150,
-                  'line_gap' : 3
-                  }
-    PARAM_DICT4 = {'threshold' : 80,
-                  'line_length' : 200,
-                  'line_gap' : 3
-                  }     
-    PARAM_DICT5 = {'threshold' : 80,
-                  'line_length' : 350,
-                  'line_gap' : 3
-                  }                                                                       
+    # PARAM_DICT3 = {'threshold' : 80,
+    #               'line_length' : 150,
+    #               'line_gap' : 3
+    #               }
+    # PARAM_DICT4 = {'threshold' : 80,
+    #               'line_length' : 200,
+    #               'line_gap' : 3
+    #               }     
+    # PARAM_DICT5 = {'threshold' : 80,
+    #               'line_length' : 350,
+    #               'line_gap' : 3
+    #               }                                                                       
 
-    dict_list = []
-    dict_list.append(PARAM_DICT1)
-    dict_list.append(PARAM_DICT2)
-    dict_list.append(PARAM_DICT3)
-    dict_list.append(PARAM_DICT4)
-    dict_list.append(PARAM_DICT5)
+    # dict_list = [PARAM_DICT1,PARAM_DICT2,PARAM_DICT3,PARAM_DICT4,PARAM_DICT5]
 
-    for param_dict in dict_list : 
+    
+    # for param_dict in dict_list : 
 
-        shelf_detection_hough_transform(IMAGE_1 , param_dict)
-        shelf_detection_hough_transform(IMAGE_2 , param_dict)
-        shelf_detection_hough_transform(IMAGE_3 , param_dict)
+    #     shelf_detection_hough_transform(IMAGE_1 , param_dict)
+    #     shelf_detection_hough_transform(IMAGE_2 , param_dict)
+    #     shelf_detection_hough_transform(IMAGE_3 , param_dict)
         
     
 if __name__ == "__main__" : 

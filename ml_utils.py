@@ -87,7 +87,7 @@ def standardize_image(img_path) :
 
     return img 
 
-def K_means_sklearn(lines,show = False):
+def K_means_sklearn(lines,n_clusters,show = True):
 
     #prepare data
     X = np.empty(shape=(0,2))
@@ -98,7 +98,7 @@ def K_means_sklearn(lines,show = False):
         
     assert X.shape[0] == len(lines) * 2 and X.shape[1] == 2 
 
-    model = KMeans(n_clusters=3)
+    model = KMeans(n_clusters)
     model.fit(X)
     yhat = model.predict(X)
     clusters = np.unique(yhat)
